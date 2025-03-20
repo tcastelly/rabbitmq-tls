@@ -1,0 +1,188 @@
+name: Docker
+
+on:
+  push:
+    # Publish `master` as Docker `latest` image.
+    branches:
+      - master
+
+    # Publish `v1.2.3` tags as releases.
+    tags:
+      - v*
+
+env:
+  IMAGE_NAME_ENTRYPOINT: ppp-entrypoint
+  IMAGE_NAME_RABBITMQ: ppp-rabbitmq
+  IMAGE_NAME_TLS: ppp-tls
+  IMAGE_NAME_LETSENCRYPT: ppp-letsencrypt
+
+jobs:
+  # Push image to GitHub Packages.
+  # See also https://docs.docker.com/docker-hub/builds/
+  build_entrypoint:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build entrypoint image
+        run: |
+          docker build ./entrypoint --file ./entrypoint/Dockerfile \
+          --build-arg NGINX_VERSION=1.24 \
+          --build-arg APP_DOMAIN=portal.amazonastankers.com \
+          --build-arg CN_2=amazonastankers.com \
+          --build-arg MINIO_DOMAIN=minio.portal.amazonastankers.com \
+          --build-arg PGADMIN_DOMAIN=db.portal.amazonastankers.com \
+          --build-arg MINIO_HOST=10.100.2.192 \
+          --build-arg DB_SSL_ON_IP=10.100.21.92 \
+          --build-arg PGADMIN_HOST=10.100.21.92 \
+          --build-arg PGPOOL_HOST=10.100.11.217 \
+          --tag $IMAGE_NAME_ENTRYPOINT
+
+      - name: Log into Github registry
+        run: echo "${{ secrets.GH_TOKEN }}" | docker login docker.pkg.github.com -u ${{ github.actor }} --password-stdin
+
+      - name: Push image to Github registry
+        run: |
+          IMAGE_ID=docker.pkg.github.com/${{ github.repository }}/$IMAGE_NAME_ENTRYPOINT
+
+          # Change all uppercase to lowercase
+          IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+
+          # Strip git ref prefix from version
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+
+          # Strip "v" prefix from tag name
+          [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+
+          # Use Docker `latest` tag convention
+          [ "$VERSION" == "master" ] && VERSION=latest
+
+          echo IMAGE_ID=$IMAGE_ID
+          echo VERSION=$VERSION
+
+          docker tag $IMAGE_NAME_ENTRYPOINT $IMAGE_ID:$VERSION
+          docker push $IMAGE_ID:$VERSION
+
+  build_tls:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build tls image
+        run: |
+          docker build ./tls-self-signed --file ./tls-self-signed/Dockerfile \
+          --build-arg NGINX_VERSION=1.24 \
+          --build-arg OPENSSL_IP=84.16.77.110 \
+          --build-arg POSTGRES_USER=webadmin \
+          --build-arg OPENSSL_DNS_1=db.portal.amazonastankers.com \
+          --build-arg OPENSSL_DNS_2=minio.portal.amazonastankers.com \
+          --build-arg OPENSSL_DNS_3=amqps.portal.amazonastankers.com \
+          --build-arg MINIO_SUFFIX_CN="" \
+          --tag $IMAGE_NAME_TLS
+
+      - name: Log into Github registry
+        run: echo "${{ secrets.GH_TOKEN }}" | docker login docker.pkg.github.com -u ${{ github.actor }} --password-stdin
+
+      - name: Push image to Github registry
+        run: |
+          IMAGE_ID=docker.pkg.github.com/${{ github.repository }}/$IMAGE_NAME_TLS
+
+          # Change all uppercase to lowercase
+          IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+
+          # Strip git ref prefix from version
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+
+          # Strip "v" prefix from tag name
+          [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+
+          # Use Docker `latest` tag convention
+          [ "$VERSION" == "master" ] && VERSION=latest
+
+          echo IMAGE_ID=$IMAGE_ID
+          echo VERSION=$VERSION
+
+          docker tag $IMAGE_NAME_TLS $IMAGE_ID:$VERSION
+          docker push $IMAGE_ID:$VERSION
+
+  build_letsencrypt:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build letsencrypt image
+        run: |
+          docker build ./tls-letsencrypt --file ./tls-letsencrypt/Dockerfile \
+          --build-arg NGINX_VERSION=1.24 \
+          --build-arg CN=amazonastankers.com \
+          --build-arg CN_2=portal.amazonastankers.com \
+          --build-arg EMAIL=tcastelly@coresynergy.com \
+          --build-arg DHPARAM="4096" \
+          --tag $IMAGE_NAME_LETSENCRYPT
+
+      - name: Log into Github registry
+        run: echo "${{ secrets.GH_TOKEN }}" | docker login docker.pkg.github.com -u ${{ github.actor }} --password-stdin
+
+      - name: Push image to Github registry
+        run: |
+          IMAGE_ID=docker.pkg.github.com/${{ github.repository }}/$IMAGE_NAME_LETSENCRYPT
+
+          # Change all uppercase to lowercase
+          IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+
+          # Strip git ref prefix from version
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+
+          # Strip "v" prefix from tag name
+          [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+
+          # Use Docker `latest` tag convention
+          [ "$VERSION" == "master" ] && VERSION=latest
+
+          echo IMAGE_ID=$IMAGE_ID
+          echo VERSION=$VERSION
+
+          docker tag $IMAGE_NAME_LETSENCRYPT $IMAGE_ID:$VERSION
+          docker push $IMAGE_ID:$VERSION
+
+  build_rabbitmq:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build rabbitmq image
+        run: docker build ./ --file ./Dockerfile --tag $IMAGE_NAME_RABBITMQ
+
+      - name: Log into Github registry
+        run: echo "${{ secrets.GH_TOKEN }}" | docker login docker.pkg.github.com -u ${{ github.actor }} --password-stdin
+
+      - name: Push image to Github registry
+        run: |
+          IMAGE_ID=docker.pkg.github.com/${{ github.repository }}/$IMAGE_NAME_RABBITMQ
+
+          # Change all uppercase to lowercase
+          IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+
+          # Strip git ref prefix from version
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+
+          # Strip "v" prefix from tag name
+          [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+
+          # Use Docker `latest` tag convention
+          [ "$VERSION" == "master" ] && VERSION=latest
+
+          echo IMAGE_ID=$IMAGE_ID
+          echo VERSION=$VERSION
+
+          docker tag $IMAGE_NAME_RABBITMQ $IMAGE_ID:$VERSION
+          docker push $IMAGE_ID:$VERSION
+

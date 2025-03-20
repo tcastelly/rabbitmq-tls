@@ -1,0 +1,4 @@
+credentials_dev/*
+!credentials_dev/amqp.dev.env
+
+rabbitmq_data

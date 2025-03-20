@@ -1,0 +1,26 @@
+services:
+  rabbitmq:
+    image: rabbitmq-tls
+    container_name: rabbitmq-tls
+    build:
+      context: ./
+      dockerfile: Dockerfile
+      target: base
+    restart: always
+    ports:
+      - 5671:5671
+      - 5672:5672
+    networks:
+      message_network:
+    env_file:
+      - ./credentials_dev/amqp.dev.env
+    volumes:
+      - ./credentials_dev/certs:/certs
+      - "./rabbitmq_data:/var/lib/rabbitmq/mnesia/"
+
+networks:
+  message_network:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.16.0.0/16
