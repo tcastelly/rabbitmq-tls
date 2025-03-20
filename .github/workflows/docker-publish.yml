@@ -11,7 +11,7 @@ on:
       - v*
 
 env:
-  IMAGE_NAME_RABBITMQ: rabbitmq-tls
+  IMAGE_NAME: rabbitmq-tls
   TARGET_PLATFORMS: linux/amd64,linux/arm64
   REGISTRY: ghcr.io
 
