@@ -1,4 +1,4 @@
-FROM rabbitmq:3-management-alpine as base
+FROM rabbitmq:4-management-alpine as base
 
 # certiticates are stored in /certs
 
