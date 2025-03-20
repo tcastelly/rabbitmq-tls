@@ -21,7 +21,7 @@ ENTRYPOINT ["/entrypoint.sh"]
 ## Production with cluster
 ##
 
-FROM base as cluster
-
-# enable cluster
-RUN sed -i "s/# cluster_formation/cluster_formation/g" /etc/rabbitmq/rabbitmq.conf
+# FROM base as cluster
+#
+# # enable cluster
+# RUN sed -i "s/# cluster_formation/cluster_formation/g" /etc/rabbitmq/rabbitmq.conf
